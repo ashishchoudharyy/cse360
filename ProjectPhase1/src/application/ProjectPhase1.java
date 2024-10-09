@@ -8,12 +8,14 @@ import javafx.stage.Stage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 public class ProjectPhase1 extends Application {
 
     private List<User> userList = new ArrayList<>();
     private List<Content> contentList = new ArrayList<>();
     private User adminUser;
+    private static final String ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     @Override
     public void start(Stage primaryStage) {
@@ -22,84 +24,83 @@ public class ProjectPhase1 extends Application {
         VBox layout = new VBox(10);
         layout.setPadding(new javafx.geometry.Insets(20));
 
-        // Initialize login and registration components
+        // Login and Registration UI Components
         TextField usernameField = new TextField();
         usernameField.setPromptText("Username");
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Password");
-        PasswordField confirmPasswordField = new PasswordField();
-        confirmPasswordField.setPromptText("Confirm Password");
-        TextField emailField = new TextField();
-        emailField.setPromptText("Email");
-        TextField firstNameField = new TextField();
-        firstNameField.setPromptText("First Name");
-        TextField middleNameField = new TextField();
-        middleNameField.setPromptText("Middle Name");
-        TextField lastNameField = new TextField();
-        lastNameField.setPromptText("Last Name");
-        TextField preferredNameField = new TextField();
-        preferredNameField.setPromptText("Preferred Name");
-
         Button loginButton = new Button("Login");
         Button registerButton = new Button("Register");
         Button logoutButton = new Button("Logout");
         Label messageLabel = new Label();
 
-        // Initialize content management components
-        TableView<Content> contentTable = new TableView<>();
-        contentTable.setPrefHeight(200);
-        Button addContentButton = new Button("Add Content");
-        Button editContentButton = new Button("Edit Content");
-        Button deleteContentButton = new Button("Delete Content");
+        // Admin Dashboard Components
+        Button inviteUserButton = new Button("Invite User");
+        Button manageRolesButton = new Button("Manage Roles");
+        Button deleteUserButton = new Button("Delete User");
+        Button resetPasswordButton = new Button("Reset Password");
 
-        layout.getChildren().addAll(new Label("Login or Register:"), usernameField, passwordField, confirmPasswordField, emailField, firstNameField, middleNameField, lastNameField, preferredNameField, loginButton, registerButton, messageLabel);
-
+        // Setup initial scene
+        layout.getChildren().addAll(new Label("Login or Register:"), usernameField, passwordField, loginButton, registerButton, messageLabel);
         Scene scene = new Scene(layout, 400, 600);
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        // Actions
-        loginButton.setOnAction(event -> handleLogin(usernameField, passwordField, layout, contentTable, messageLabel));
-        registerButton.setOnAction(event -> handleRegister(usernameField, passwordField, confirmPasswordField, emailField, firstNameField, middleNameField, lastNameField, preferredNameField, messageLabel));
-        logoutButton.setOnAction(event -> handleLogout(layout, usernameField, passwordField, confirmPasswordField, emailField, firstNameField, middleNameField, lastNameField, preferredNameField, messageLabel, contentTable));
+        // Action Handlers
+        loginButton.setOnAction(event -> handleLogin(usernameField, passwordField, layout, messageLabel));
+        registerButton.setOnAction(event -> handleRegister(usernameField, passwordField, messageLabel));
+        inviteUserButton.setOnAction(event -> handleInviteUser(layout, messageLabel));
+        manageRolesButton.setOnAction(event -> handleManageRoles(layout, messageLabel));
+        deleteUserButton.setOnAction(event -> handleDeleteUser(layout, messageLabel));
+        resetPasswordButton.setOnAction(event -> handleResetPassword(layout, messageLabel));
+        logoutButton.setOnAction(event -> handleLogout(layout, usernameField, passwordField, messageLabel));
     }
 
-    private void handleLogin(TextField usernameField, PasswordField passwordField, VBox layout, TableView<Content> contentTable, Label messageLabel) {
-        String username = usernameField.getText();
-        String password = passwordField.getText();
+    // Method to handle login functionality
+    private void handleLogin(TextField usernameField, PasswordField passwordField, VBox layout, Label messageLabel) {
+        // Implementation for user login
+    }
 
-        Optional<User> matchingUser = userList.stream()
-            .filter(user -> user.getUsername().equals(username) && user.getPassword().equals(password))
-            .findFirst();
+    // Method to handle user registration
+    private void handleRegister(TextField usernameField, PasswordField passwordField, Label messageLabel) {
+        // Implementation for user registration
+    }
 
-        if (matchingUser.isPresent()) {
-            SessionManager.setCurrentUser(matchingUser.get());
-            layout.getChildren().clear();
-            layout.getChildren().addAll(new Label("Content Management:"), contentTable, new Button("Add Content"), new Button("Edit Content"), new Button("Delete Content"), new Button("Logout"));
-            messageLabel.setText("Login successful!");
-        } else {
-            messageLabel.setText("Login failed: Incorrect username or password.");
+    // Method to handle inviting a new user
+    private void handleInviteUser(VBox layout, Label messageLabel) {
+        String inviteCode = generateRandomCode();
+        // Implementation for inviting a new user with an invite code
+    }
+
+    // Method to handle role management
+    private void handleManageRoles(VBox layout, Label messageLabel) {
+        // Implementation for managing roles
+    }
+
+    // Method to handle deleting a user
+    private void handleDeleteUser(VBox layout, Label messageLabel) {
+        // Implementation for deleting a user
+    }
+
+    // Method to handle password reset
+    private void handleResetPassword(VBox layout, Label messageLabel) {
+        // Implementation for resetting a password
+    }
+
+    // Method to handle user logout
+    private void handleLogout(VBox layout, TextField usernameField, PasswordField passwordField, Label messageLabel) {
+        // Implementation for logging out a user
+    }
+
+    // Helper method to generate a random alphanumeric code
+    private String generateRandomCode() {
+        int count = 10;
+        StringBuilder builder = new StringBuilder();
+        while (count-- != 0) {
+            int character = (int)(Math.random() * ALPHA_NUMERIC_STRING.length());
+            builder.append(ALPHA_NUMERIC_STRING.charAt(character));
         }
-    }
-
-    private void handleRegister(TextField usernameField, PasswordField passwordField, PasswordField confirmPasswordField, TextField emailField, TextField firstNameField, TextField middleNameField, TextField lastNameField, TextField preferredNameField, Label messageLabel) {
-        if (!passwordField.getText().equals(confirmPasswordField.getText())) {
-            messageLabel.setText("Passwords do not match.");
-            return;
-        }
-
-        String username = usernameField.getText();
-        String password = passwordField.getText();
-        User newUser = new User(userList.size() + 1, username, password, new Role("User"));  // Default role
-        userList.add(newUser);
-        messageLabel.setText("Registration successful. Please login.");
-    }
-
-    private void handleLogout(VBox layout, TextField usernameField, PasswordField passwordField, PasswordField confirmPasswordField, TextField emailField, TextField firstNameField, TextField middleNameField, TextField lastNameField, TextField preferredNameField, Label messageLabel, TableView<Content> contentTable) {
-        SessionManager.clearCurrentUser();
-        layout.getChildren().clear();
-        layout.getChildren().addAll(usernameField, passwordField, confirmPasswordField, emailField, firstNameField, middleNameField, lastNameField, preferredNameField, new Button("Login"), new Button("Register"), messageLabel);
-        messageLabel.setText("Logged out successfully.");
+        return builder.toString();
     }
 
     public static void main(String[] args) {
