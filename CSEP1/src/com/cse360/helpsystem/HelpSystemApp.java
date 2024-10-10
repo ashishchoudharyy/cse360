@@ -66,10 +66,13 @@ public class HelpSystemApp extends Application {
 
         loginButton.setOnAction(e -> login(usernameField.getText(), passwordField.getText()));
         registerButton.setOnAction(e -> {
-            if (!inviteCodeField.getText().isEmpty()) {
-                showRegistrationPage(inviteCodeField.getText());
+            String inviteCode = inviteCodeField.getText().trim();
+            if (inviteCode.isEmpty()) {
+                showAlert("Please enter an invite code.");
+            } else if (inviteCodes.containsKey(inviteCode)) {
+                showRegistrationPage(inviteCode);
             } else {
-                showAlert("Please enter an invite code to register.");
+                showAlert("Invalid invite code.");
             }
         });
 
@@ -77,42 +80,16 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
     }
-
-//    private void showLoginPage() {
-//        GridPane grid = createGrid();
-//
-//        Label titleLabel = new Label("CSE360 Help System");
-//        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-//        Label usernameLabel = new Label("Username:");
-//        TextField usernameField = new TextField();
-//        Label passwordLabel = new Label("Password:");
-//        PasswordField passwordField = new PasswordField();
-//        Button loginButton = new Button("Login");
-//        Label inviteCodeLabel = new Label("Invite Code:");
-//        TextField inviteCodeField = new TextField();
-//        Button registerButton = new Button("Register");
-//
-//        grid.add(titleLabel, 0, 0, 2, 1);
-//        grid.add(usernameLabel, 0, 1);
-//        grid.add(usernameField, 1, 1);
-//        grid.add(passwordLabel, 0, 2);
-//        grid.add(passwordField, 1, 2);
-//        grid.add(loginButton, 1, 3);
-//        grid.add(inviteCodeLabel, 0, 4);
-//        grid.add(inviteCodeField, 1, 4);
-//        grid.add(registerButton, 1, 5);
-//
-//        loginButton.setOnAction(e -> login(usernameField.getText(), passwordField.getText()));
-//        registerButton.setOnAction(e -> showRegistrationPage(inviteCodeField.getText()));
-//
-//        Scene scene = new Scene(grid, 300, 250);
-//        primaryStage.setScene(scene);
-//        primaryStage.show();
-//    }
   
     
     private void login(String username, String password) {
         if (users.isEmpty()) {
+            String passwordValidationResult = validatePassword(password);
+            if (passwordValidationResult != null) {
+                showAlert(passwordValidationResult);
+                return;
+            }
+            
             User admin = new User(username, password, new HashSet<>(Arrays.asList(Role.ADMIN)));
             users.put(username, admin);
             currentUser = admin;
@@ -146,72 +123,36 @@ public class HelpSystemApp extends Application {
             showAlert("User not found");
         }
     }
-    
-    
-//    private void login(String username, String password) {
-//        if (users.isEmpty()) {
-//            User admin = new User(username, password, new HashSet<>(Arrays.asList(Role.ADMIN)));
-//            users.put(username, admin);
-//            currentUser = admin;
-//            showSetupAccountPage();
-//        } else if (users.containsKey(username)) {
-//            User user = users.get(username);
-//            if (user.getPassword().equals(password) || 
-//                (user.getOneTimePassword() != null && user.getOneTimePassword().equals(password))) {
-//                currentUser = user;
-//                if (user.getOneTimePassword() != null && user.getOneTimePassword().equals(password)) {
-//                    if (user.getOneTimePasswordExpiration().after(new Date())) {
-//                        showResetPasswordPage();
-//                    } else {
-//                        showAlert("One-time password has expired");
-//                        return;
-//                    }
-//                } else if (!user.isSetupComplete()) {
-//                    showSetupAccountPage();
-//                } else if (user.getRoles().size() > 1) {
-//                    showRoleSelectionPage();
-//                } else {
-//                    showHomePage(user.getRoles().iterator().next());
-//                }
-//            } else {
-//                showAlert("Invalid credentials");
-//            }
-//        } else {
-//            showAlert("User not found");
-//        }
-//        
-//    }
-//        if (users.isEmpty()) {
-//            User admin = new User(username, password, new HashSet<>(Arrays.asList(Role.ADMIN)));
-//            users.put(username, admin);
-//            currentUser = admin;
-//            showSetupAccountPage();
-//        } else if (users.containsKey(username)) {
-//            User user = users.get(username);
-//            if (user.getPassword().equals(password) || user.getOneTimePassword().equals(password)) {
-//                currentUser = user;
-//                if (user.getOneTimePassword().equals(password)) {
-//                    if (user.getOneTimePasswordExpiration().after(new Date())) {
-//                        showResetPasswordPage();
-//                    } else {
-//                        showAlert("One-time password has expired");
-//                        return;
-//                    }
-//                } else if (!user.isSetupComplete()) {
-//                    showSetupAccountPage();
-//                } else if (user.getRoles().size() > 1) {
-//                    showRoleSelectionPage();
-//                } else {
-//                    showHomePage(user.getRoles().iterator().next());
-//                }
-//            } else {
-//                showAlert("Invalid credentials");
-//            }
-//        } else {
-//            showAlert("User not found");
-//        }
-//    }
+        
+    private String validatePassword(String password) {
+        StringBuilder missingCriteria = new StringBuilder("Password must contain:\n");
+        boolean isValid = true;
 
+        if (!password.matches(".*[A-Z].*")) {
+            missingCriteria.append("- An uppercase letter\n");
+            isValid = false;
+        }
+        if (!password.matches(".*[a-z].*")) {
+            missingCriteria.append("- A lowercase letter\n");
+            isValid = false;
+        }
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+            missingCriteria.append("- A special character\n");
+            isValid = false;
+        }
+        if (!password.matches(".*\\d.*")) {
+            missingCriteria.append("- A digit\n");
+            isValid = false;
+        }
+        if (password.length() < 8) {
+            missingCriteria.append("- At least 8 characters long\n");
+            isValid = false;
+        }
+
+        return isValid ? null : missingCriteria.toString();
+    }
+    
+    
     private void showRegistrationPage(String inviteCode) {
         GridPane grid = createGrid();
 
@@ -235,16 +176,33 @@ public class HelpSystemApp extends Application {
         grid.add(registerButton, 1, 4);
 
         registerButton.setOnAction(e -> {
-            if (passwordField.getText().equals(confirmPasswordField.getText())) {
-                register(usernameField.getText(), passwordField.getText(), inviteCode);
-            } else {
-                showAlert("Passwords do not match");
+            String username = usernameField.getText();
+            String password = passwordField.getText();
+            String confirmPassword = confirmPasswordField.getText();
+
+            if (username.isEmpty()) {
+                showAlert("Please enter a username.");
+                return;
             }
+
+            String passwordValidationResult = validatePassword(password);
+            if (passwordValidationResult != null) {
+                showAlert(passwordValidationResult);
+                return;
+            }
+
+            if (!password.equals(confirmPassword)) {
+                showAlert("Passwords do not match");
+                return;
+            }
+
+            register(username, password, inviteCode);
         });
 
         Scene scene = new Scene(grid, 300, 250);
         primaryStage.setScene(scene);
     }
+
 
     private void register(String username, String password, String inviteCode) {
         if (inviteCodes.containsKey(inviteCode)) {
@@ -260,6 +218,7 @@ public class HelpSystemApp extends Application {
         }
     }
 
+    
     private void showSetupAccountPage() {
         GridPane grid = createGrid();
 
@@ -269,7 +228,7 @@ public class HelpSystemApp extends Application {
         TextField emailField = new TextField();
         Label firstNameLabel = new Label("First Name:");
         TextField firstNameField = new TextField();
-        Label middleNameLabel = new Label("Middle Name:");
+        Label middleNameLabel = new Label("Middle Name (optional):");
         TextField middleNameField = new TextField();
         Label lastNameLabel = new Label("Last Name:");
         TextField lastNameField = new TextField();
@@ -291,18 +250,29 @@ public class HelpSystemApp extends Application {
         grid.add(submitButton, 1, 6);
 
         submitButton.setOnAction(e -> {
-            currentUser.setEmail(emailField.getText());
-            currentUser.setFirstName(firstNameField.getText());
-            currentUser.setMiddleName(middleNameField.getText());
-            currentUser.setLastName(lastNameField.getText());
-            currentUser.setPreferredName(preferredNameField.getText());
-            currentUser.setSetupComplete(true);
-            showLoginPage();
+            String email = emailField.getText().trim();
+            String firstName = firstNameField.getText().trim();
+            String middleName = middleNameField.getText().trim();
+            String lastName = lastNameField.getText().trim();
+            String preferredName = preferredNameField.getText().trim();
+
+            if (email.isEmpty() || firstName.isEmpty() || lastName.isEmpty()) {
+                showAlert("Please fill in all required fields.");
+            } else {
+                currentUser.setEmail(email);
+                currentUser.setFirstName(firstName);
+                currentUser.setMiddleName(middleName);
+                currentUser.setLastName(lastName);
+                currentUser.setPreferredName(preferredName);
+                currentUser.setSetupComplete(true);
+                showLoginPage();
+            }
         });
 
         Scene scene = new Scene(grid, 400, 350);
         primaryStage.setScene(scene);
     }
+    
 
     private void showRoleSelectionPage() {
         VBox vbox = new VBox(10);
@@ -416,46 +386,6 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
-    
-    //working
-//    private void showInviteUserPage() {
-//        GridPane grid = createGrid();
-//
-//        Label titleLabel = new Label("Invite New User");
-//        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-//        CheckBox adminCheckBox = new CheckBox("Admin");
-//        CheckBox studentCheckBox = new CheckBox("Student");
-//        CheckBox instructorCheckBox = new CheckBox("Instructor");
-//        Button generateButton = new Button("Generate Invite Code");
-//        Button backButton = new Button("Back");
-//
-//        grid.add(titleLabel, 0, 0, 2, 1);
-//        grid.add(adminCheckBox, 0, 1);
-//        grid.add(studentCheckBox, 0, 2);
-//        grid.add(instructorCheckBox, 0, 3);
-//        grid.add(generateButton, 1, 4);
-//        grid.add(backButton, 1, 4);
-//
-//        generateButton.setOnAction(e -> {
-//            Set<Role> selectedRoles = new HashSet<>();
-//            if (adminCheckBox.isSelected()) selectedRoles.add(Role.ADMIN);
-//            if (studentCheckBox.isSelected()) selectedRoles.add(Role.STUDENT);
-//            if (instructorCheckBox.isSelected()) selectedRoles.add(Role.INSTRUCTOR);
-//            
-//            if (!selectedRoles.isEmpty()) {
-//                String inviteCode = UUID.randomUUID().toString().substring(0, 8);
-//                inviteCodes.put(inviteCode, selectedRoles);
-//                showAlert("Invitation Code: " + inviteCode);
-//            } else {
-//                showAlert("Please select at least one role");
-//            }
-//        });
-//        
-//        backButton.setOnAction(e -> showHomePage(Role.ADMIN));
-//
-//        Scene scene = new Scene(grid, 300, 250);
-//        primaryStage.setScene(scene);
-//    }
 
     private void showManageRolesPage() {
         GridPane grid = createGrid();
@@ -589,40 +519,6 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
-    //    private void showResetUserPage() {
-//        GridPane grid = createGrid();
-//
-//        Label titleLabel = new Label("Reset User Password");
-//        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-//        Label usernameLabel = new Label("Username:");
-//        TextField usernameField = new TextField();
-//        Button resetButton = new Button("Reset Password");
-//        Button backButton = new Button("Back");
-//
-//        grid.add(titleLabel, 0, 0, 2, 1);
-//        grid.add(usernameLabel, 0, 1);
-//        grid.add(usernameField, 1, 1);
-//        grid.add(resetButton, 1, 2);
-//        grid.add(backButton, 1, 3);
-//
-//        resetButton.setOnAction(e -> {
-//            String username = usernameField.getText();
-//            if (users.containsKey(username)) {
-//                User user = users.get(username);
-//                String oneTimePassword = UUID.randomUUID().toString().substring(0, 8);
-//                user.setOneTimePassword(oneTimePassword);
-//                user.setOneTimePasswordExpiration(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)); // 24 hours
-//                showAlert("Password reset. One-time password: " + oneTimePassword);
-//            } else {
-//                showAlert("User not found");
-//            }
-//        });
-//
-//        backButton.setOnAction(e -> showHomePage(Role.ADMIN));
-//
-//        Scene scene = new Scene(grid, 300, 200);
-//        primaryStage.setScene(scene);
-//    }
 
     private void showListUsersPage() {
         VBox vbox = new VBox(10);
@@ -693,32 +589,6 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
-    //working 
-//    private void showListUsersPage() {
-//        VBox vbox = new VBox(10);
-//        vbox.setAlignment(Pos.CENTER);
-//        vbox.setPadding(new Insets(20));
-//
-//        Label titleLabel = new Label("User Accounts");
-//        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-//        vbox.getChildren().add(titleLabel);
-//
-//        for (User user : users.values()) {
-//            String rolesCodes = user.getRoles().stream()
-//                                    .map(role -> role.toString().substring(0, 1))
-//                                    .collect(Collectors.joining());
-//            Label userLabel = new Label(user.getUsername() + " - " + user.getDisplayName() + " - " + rolesCodes);
-//            vbox.getChildren().add(userLabel);
-//        }
-//
-//        Button backButton = new Button("Back");
-//        backButton.setOnAction(e -> showHomePage(Role.ADMIN));
-//        vbox.getChildren().add(backButton);
-//
-//        Scene scene = new Scene(vbox, 400, 300);
-//        primaryStage.setScene(scene);
-//    }
-    
 
     private void showResetPasswordPage() {
         GridPane grid = createGrid();
@@ -757,77 +627,6 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
-//    private void showResetPasswordPage() {
-//        GridPane grid = createGrid();
-//
-//        Label titleLabel = new Label("Reset Your Password");
-//        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-//        Label newPasswordLabel = new Label("New Password:");
-//        PasswordField newPasswordField = new PasswordField();
-//        Label confirmPasswordLabel = new Label("Confirm Password:");
-//        PasswordField confirmPasswordField = new PasswordField();
-//        Button resetButton = new Button("Reset Password");
-//
-//        grid.add(titleLabel, 0, 0, 2, 1);
-//        grid.add(newPasswordLabel, 0, 1);
-//        grid.add(newPasswordField, 1, 1);
-//        grid.add(confirmPasswordLabel, 0, 2);
-//        grid.add(confirmPasswordField, 1, 2);
-//        grid.add(resetButton, 1, 3);
-//
-//        resetButton.setOnAction(e -> {
-//            String newPassword = newPasswordField.getText();
-//            String confirmPassword = confirmPasswordField.getText();
-//            if (newPassword.equals(confirmPassword)) {
-//                currentUser.setPassword(newPassword);
-//                currentUser.setOneTimePassword(null);
-//                currentUser.setOneTimePasswordExpiration(null);
-//                showAlert("Password reset successfully");
-//                showLoginPage();
-//            } else {
-//                showAlert("Passwords do not match");
-//            }
-//        });
-//
-//        Scene scene = new Scene(grid, 300, 200);
-//        primaryStage.setScene(scene);
-//    }
-
-//    private void showResetPasswordPage() {
-//        GridPane grid = createGrid();
-//
-//        Label titleLabel = new Label("Reset Your Password");
-//        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-//        Label newPasswordLabel = new Label("New Password:");
-//        PasswordField newPasswordField = new PasswordField();
-//        Label confirmPasswordLabel = new Label("Confirm Password:");
-//        PasswordField confirmPasswordField = new PasswordField();
-//        Button resetButton = new Button("Reset Password");
-//
-//        grid.add(titleLabel, 0, 0, 2, 1);
-//        grid.add(newPasswordLabel, 0, 1);
-//        grid.add(newPasswordField, 1, 1);
-//        grid.add(confirmPasswordLabel, 0, 2);
-//        grid.add(confirmPasswordField, 1, 2);
-//        grid.add(resetButton, 1, 3);
-//
-//        resetButton.setOnAction(e -> {
-//            String newPassword = newPasswordField.getText();
-//            String confirmPassword = confirmPasswordField.getText();
-//            if (newPassword.equals(confirmPassword)) {
-//                currentUser.setPassword(newPassword);
-//                currentUser.setOneTimePassword(null);
-//                currentUser.setOneTimePasswordExpiration(null);
-//                showAlert("Password reset successfully");
-//                showLoginPage();
-//            } else {
-//                showAlert("Passwords do not match");
-//            }
-//        });
-//
-//        Scene scene = new Scene(grid, 300, 200);
-//        primaryStage.setScene(scene);
-//    }
 
     private GridPane createGrid() {
         GridPane grid = new GridPane();
@@ -971,120 +770,6 @@ public class HelpSystemApp extends Application {
         }
     }
     
-    
-//    private class User {
-//        private String username;
-//        private String password;
-//        private Set<Role> roles;
-//        private String email;
-//        private String firstName;
-//        private String middleName;
-//        private String lastName;
-//        private String preferredName;
-//        private boolean setupComplete;
-//        private String oneTimePassword;
-//        private Date oneTimePasswordExpiration;
-//
-//        public User(String username, String password, Set<Role> roles) {
-//            this.username = username;
-//            this.password = password;
-//            this.roles = roles;
-//            this.setupComplete = false;
-//            this.oneTimePassword = null;
-//        }
-//
-//        public String getUsername() {
-//            return username;
-//        }
-//
-//        public String getPassword() {
-//            return password;
-//        }
-//
-//        public void setPassword(String password) {
-//            this.password = password;
-//        }
-//
-//        public Set<Role> getRoles() {
-//            return roles;
-//        }
-//
-//        public void addRole(Role role) {
-//            roles.add(role);
-//        }
-//
-//        public void removeRole(Role role) {
-//            roles.remove(role);
-//        }
-//
-//        public String getEmail() {
-//            return email;
-//        }
-//
-//        public void setEmail(String email) {
-//            this.email = email;
-//        }
-//
-//        public String getFirstName() {
-//            return firstName;
-//        }
-//
-//        public void setFirstName(String firstName) {
-//            this.firstName = firstName;
-//        }
-//
-//        public String getMiddleName() {
-//            return middleName;
-//        }
-//
-//        public void setMiddleName(String middleName) {
-//            this.middleName = middleName;
-//        }
-//
-//        public String getLastName() {
-//            return lastName;
-//        }
-//
-//        public void setLastName(String lastName) {
-//            this.lastName = lastName;
-//        }
-//
-//        public String getPreferredName() {
-//            return preferredName;
-//        }
-//
-//        public void setPreferredName(String preferredName) {
-//            this.preferredName = preferredName;
-//        }
-//
-//        public boolean isSetupComplete() {
-//            return setupComplete;
-//        }
-//
-//        public void setSetupComplete(boolean setupComplete) {
-//            this.setupComplete = setupComplete;
-//        }
-//
-//        public String getOneTimePassword() {
-//            return oneTimePassword;
-//        }
-//
-//        public void setOneTimePassword(String oneTimePassword) {
-//            this.oneTimePassword = oneTimePassword;
-//        }
-//
-//        public Date getOneTimePasswordExpiration() {
-//            return oneTimePasswordExpiration;
-//        }
-//
-//        public void setOneTimePasswordExpiration(Date oneTimePasswordExpiration) {
-//            this.oneTimePasswordExpiration = oneTimePasswordExpiration;
-//        }
-//
-//        public String getDisplayName() {
-//            return preferredName != null && !preferredName.isEmpty() ? preferredName : firstName;
-//        }
-//    }
 
     private enum Role {
         ADMIN, STUDENT, INSTRUCTOR
