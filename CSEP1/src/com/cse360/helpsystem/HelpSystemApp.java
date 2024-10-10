@@ -1,5 +1,6 @@
 package com.cse360.helpsystem;
 
+//JavaFX imports needed to support the Graphical User Interface
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.HBox;
@@ -22,16 +23,50 @@ import javafx.stage.Stage;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/*******
+ * <p> HelpSystemApp Class </p>
+ * 
+ * <p> Description: A JavaFX-based GUI implementation of a Help System for CSE360 </p>
+ * 
+ * <p> Copyright: CSE360 Team(Ashish Kumar, Kamaal Alag, Grace Mower, Ishaan Kurmi, Anshuman Yadav) © 2024 </p>
+ * 
+ * @author CSE360 Team(Ashish Kumar, Kamaal Alag, Grace Mower, Ishaan Kurmi, Anshuman Yadav)
+ * 
+ * @version 1.00    2024-03-01 Initial implementation of the CSE360 Help System
+ * 
+ */
+
 public class HelpSystemApp extends Application {
-
+	
+	/** Map to store user accounts */
     private Map<String, User> users = new HashMap<>();
+    
+    /** Reference to the current logged-in user */
     private User currentUser;
+    
+    /** The primary stage for the application */
     private Stage primaryStage;
+    
+    /** Map to store invitation codes and associated roles */
     private Map<String, Set<Role>> inviteCodes = new HashMap<>();
-
+    
+    
+    /**
+     * This is the main entry point for this application.
+     * 
+     * @param args Command line arguments
+     */
     public static void main(String[] args) {
         launch(args);
     }
+    
+    /**
+     * This method is called when the application should start.
+     * It sets up the primary stage and shows the login page.
+     * 
+     * @param primaryStage The primary stage for this application
+     */
+    
 
     @Override
     public void start(Stage primaryStage) {
@@ -39,6 +74,10 @@ public class HelpSystemApp extends Application {
         primaryStage.setTitle("CSE360 Help System");
         showLoginPage();
     }
+    
+    /**
+     * Displays the login page of the application.
+     */
     
     private void showLoginPage() {
         GridPane grid = createGrid();
@@ -81,6 +120,13 @@ public class HelpSystemApp extends Application {
         primaryStage.show();
     }
   
+
+    /**
+     * Handles the login process for users.
+     * 
+     * @param username The entered username
+     * @param password The entered password
+     */
     
     private void login(String username, String password) {
         if (users.isEmpty()) {
@@ -124,7 +170,15 @@ public class HelpSystemApp extends Application {
         }
     }
         
-    private String validatePassword(String password) {
+    /**
+     * Validates the password against the specified criteria.
+     * 
+     * @param password The password to validate
+     * @return A string containing missing criteria, or null if valid
+     */
+    
+    
+    public static String validatePassword(String password) {
         StringBuilder missingCriteria = new StringBuilder("Password must contain:\n");
         boolean isValid = true;
 
@@ -152,6 +206,11 @@ public class HelpSystemApp extends Application {
         return isValid ? null : missingCriteria.toString();
     }
     
+    /**
+     * Displays the registration page for new users.
+     * 
+     * @param inviteCode The invitation code used for registration
+     */
     
     private void showRegistrationPage(String inviteCode) {
         GridPane grid = createGrid();
@@ -203,6 +262,13 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
 
+    /**
+     * Registers a new user in the system.
+     * 
+     * @param user-name The chosen user-name
+     * @param password The chosen password
+     * @param inviteCode The invitation code used
+     */
 
     private void register(String username, String password, String inviteCode) {
         if (inviteCodes.containsKey(inviteCode)) {
@@ -218,6 +284,9 @@ public class HelpSystemApp extends Application {
         }
     }
 
+    /**
+     * Displays the account setup page for new users.
+     */
     
     private void showSetupAccountPage() {
         GridPane grid = createGrid();
@@ -273,6 +342,9 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
+    /**
+     * Displays the role selection page for users with multiple roles.
+     */
 
     private void showRoleSelectionPage() {
         VBox vbox = new VBox(10);
@@ -292,6 +364,12 @@ public class HelpSystemApp extends Application {
         Scene scene = new Scene(vbox, 300, 200);
         primaryStage.setScene(scene);
     }
+    
+    /**
+     * Displays the home page based on the user's role.
+     * 
+     * @param role The role of the current user
+     */
 
     private void showHomePage(Role role) {
         VBox vbox = new VBox(10);
@@ -328,6 +406,10 @@ public class HelpSystemApp extends Application {
         Scene scene = new Scene(vbox, 300, 250);
         primaryStage.setScene(scene);
     }
+    
+    /**
+     * Displays the page for inviting new users (Admin function).
+     */
 
     private void showInviteUserPage() {
         GridPane grid = createGrid();
@@ -386,6 +468,9 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
+    /**
+     * Displays the page for managing user roles (Admin function).
+     */
 
     private void showManageRolesPage() {
         GridPane grid = createGrid();
@@ -443,6 +528,11 @@ public class HelpSystemApp extends Application {
         Scene scene = new Scene(grid, 300, 250);
         primaryStage.setScene(scene);
     }
+    
+
+    /**
+     * Displays the page for deleting users (Admin function).
+     */
 
     private void showDeleteUserPage() {
         GridPane grid = createGrid();
@@ -480,7 +570,11 @@ public class HelpSystemApp extends Application {
         Scene scene = new Scene(grid, 300, 200);
         primaryStage.setScene(scene);
     }
+    
 
+    /**
+     * Displays the page for resetting user passwords (Admin function).
+     */
 
     private void showResetUserPage() {
         GridPane grid = createGrid();
@@ -519,6 +613,9 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
+    /**
+     * Displays a list of all users in the system (Admin function).
+     */
 
     private void showListUsersPage() {
         VBox vbox = new VBox(10);
@@ -589,7 +686,11 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
+    /**
+     * Displays the page for users to reset their own password.
+     */
 
+    
     private void showResetPasswordPage() {
         GridPane grid = createGrid();
 
@@ -611,6 +712,15 @@ public class HelpSystemApp extends Application {
         resetButton.setOnAction(e -> {
             String newPassword = newPasswordField.getText();
             String confirmPassword = confirmPasswordField.getText();
+
+            // First, validate the new password
+            String passwordValidationResult = validatePassword(newPassword);
+            if (passwordValidationResult != null) {
+                showAlert(passwordValidationResult);
+                return;
+            }
+
+            // Then, check if passwords match
             if (newPassword.equals(confirmPassword)) {
                 currentUser.setPassword(newPassword);
                 currentUser.setOneTimePassword(null);
@@ -627,6 +737,11 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
+    /**
+     * Creates and returns a standard GridPane for consistent UI layout.
+     * 
+     * @return A configured GridPane
+     */
 
     private GridPane createGrid() {
         GridPane grid = new GridPane();
@@ -637,6 +752,12 @@ public class HelpSystemApp extends Application {
         return grid;
     }
 
+    /**
+     * Displays an alert dialog with the given message.
+     * 
+     * @param message The message to display
+     */
+    
     private void showAlert(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Information");
@@ -644,7 +765,11 @@ public class HelpSystemApp extends Application {
         alert.setContentText(message);
         alert.showAndWait();
     }
-
+    
+    /**
+     * Represents a user in the system.
+     */
+    
     private class User {
         private String username;
         private String password;
@@ -770,8 +895,13 @@ public class HelpSystemApp extends Application {
         }
     }
     
+    /**
+     * Enum representing the possible roles in the system.
+     */
 
     private enum Role {
         ADMIN, STUDENT, INSTRUCTOR
     }
+    
+    
 }
