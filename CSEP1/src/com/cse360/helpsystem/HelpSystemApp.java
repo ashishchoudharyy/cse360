@@ -20,8 +20,21 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+
+import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
+
 
 /*******
  * <p> HelpSystemApp Class </p>
@@ -32,12 +45,11 @@ import java.util.stream.Collectors;
  * 
  * @author CSE360 Team(Ashish Kumar, Kamaal Alag, Grace Mower, Ishaan Kurmi, Anshuman Yadav)
  * 
- * @version 1.00    2024-03-01 Initial implementation of the CSE360 Help System
+ * @version 2.00 2024-10-30 Added new features including addition of article, deletion of article etc.
  * 
  */
 
 public class HelpSystemApp extends Application {
-	
 	/** Map to store user accounts */
     private Map<String, User> users = new HashMap<>();
     
@@ -50,6 +62,16 @@ public class HelpSystemApp extends Application {
     /** Map to store invitation codes and associated roles */
     private Map<String, Set<Role>> inviteCodes = new HashMap<>();
     
+    static Map<Long, Article> articles = new HashMap<>();
+    private static Map<String, Set<Long>> articleGroups = new HashMap<>();
+    
+    static long nextArticleId = 1;
+    
+    private Role currentRole;
+    
+    
+    
+    
     
     /**
      * This is the main entry point for this application.
@@ -57,6 +79,7 @@ public class HelpSystemApp extends Application {
      * @param args Command line arguments
      */
     public static void main(String[] args) {
+    	restoreNextArticleId();
         launch(args);
     }
     
@@ -115,7 +138,7 @@ public class HelpSystemApp extends Application {
             }
         });
 
-        Scene scene = new Scene(grid, 300, 300);
+        Scene scene = new Scene(grid, 600, 500);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -258,7 +281,7 @@ public class HelpSystemApp extends Application {
             register(username, password, inviteCode);
         });
 
-        Scene scene = new Scene(grid, 300, 250);
+        Scene scene = new Scene(grid, 600, 500);
         primaryStage.setScene(scene);
     }
 
@@ -387,6 +410,12 @@ public class HelpSystemApp extends Application {
             Button resetButton = new Button("Reset User Password");
             Button listUsersButton = new Button("List Users");
             Button logoutButton = new Button("Logout");
+            Button addArticleButton = new Button("Add Article");
+            Button updateArticleButton = new Button("Update Article");
+            Button deleteArticleButton = new Button("Delete Article");
+            Button listArticleButton = new Button("List Articles");
+            Button backupButton = new Button("Backup Articles");
+            Button restoreButton = new Button("Restore Articles");
 
             inviteButton.setOnAction(e -> showInviteUserPage());
             manageRolesButton.setOnAction(e -> showManageRolesPage());
@@ -394,16 +423,46 @@ public class HelpSystemApp extends Application {
             resetButton.setOnAction(e -> showResetUserPage());
             listUsersButton.setOnAction(e -> showListUsersPage());
             logoutButton.setOnAction(e -> showLoginPage());
+            addArticleButton.setOnAction(e -> showAddArticlePage(role));
+            listArticleButton.setOnAction(e -> showListArticlesPage(role));
+            updateArticleButton.setOnAction(e -> showUpdateArticlePage(role));
+            deleteArticleButton.setOnAction(e -> showDeleteArticlePage(role));
+            backupButton.setOnAction(e -> showBackupPage(role));
+            restoreButton.setOnAction(e -> showRestorePage(role));
 
-            vbox.getChildren().addAll(inviteButton, manageRolesButton, deleteButton, resetButton, listUsersButton, logoutButton);
-        } else {
+            vbox.getChildren().addAll(inviteButton, manageRolesButton, deleteButton, resetButton, listUsersButton, logoutButton, addArticleButton,listArticleButton, updateArticleButton, deleteArticleButton, backupButton, restoreButton);
+        } 
+        
+        if (role == Role.INSTRUCTOR) {
+            
+            Button logoutButton = new Button("Logout");
+            Button addArticleButton = new Button("Add Article");
+            Button updateArticleButton = new Button("Update Article");
+            Button deleteArticleButton = new Button("Delete Article");
+            Button listArticleButton = new Button("List Articles");
+            Button backupButton = new Button("Backup Articles");
+            Button restoreButton = new Button("Restore Articles");
+
+
+            logoutButton.setOnAction(e -> showLoginPage());
+            addArticleButton.setOnAction(e -> showAddArticlePage(role));
+            listArticleButton.setOnAction(e -> showListArticlesPage(role));
+            updateArticleButton.setOnAction(e -> showUpdateArticlePage(role));
+            deleteArticleButton.setOnAction(e -> showDeleteArticlePage(role));
+            backupButton.setOnAction(e -> showBackupPage(role));
+            restoreButton.setOnAction(e -> showRestorePage(role));
+
+            vbox.getChildren().addAll(logoutButton, addArticleButton,listArticleButton, updateArticleButton, deleteArticleButton, backupButton, restoreButton);
+        }
+        
+        if (role == Role.STUDENT) {
             Label roleLabel = new Label(role.toString() + " Dashboard");
             Button logoutButton = new Button("Logout");
             logoutButton.setOnAction(e -> showLoginPage());
             vbox.getChildren().addAll(roleLabel, logoutButton);
         }
 
-        Scene scene = new Scene(vbox, 300, 250);
+        Scene scene = new Scene(vbox, 600, 500);
         primaryStage.setScene(scene);
     }
     
@@ -766,9 +825,563 @@ public class HelpSystemApp extends Application {
         alert.showAndWait();
     }
     
+/**
+ * Phase 2
+ */
+
+/**
+ * Add functionality - Displays the GUI for adding a new article and processes the input to add a new article.
+ */
+
+/**
+ * Shows the page for adding a new article, setting up the GUI components necessary for user input.
+ *
+ * @param role The role of the user who is currently logged in.
+ */
+
+    
+    private void showAddArticlePage(Role role) {
+        GridPane grid = createGrid();
+
+        Label titleLabel = new Label("Add New Article");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+
+        
+        // Fields for article details
+        TextField levelField = new TextField();
+        TextField titleField = new TextField();
+        TextField abstractField = new TextField();
+        TextArea bodyField = new TextArea();
+        TextField keywordsField = new TextField();
+        TextField groupsField = new TextField();
+        Button submitButton = new Button("Submit");
+        Button backButton = new Button("Back");
+        
+
+        // Layout the form
+        grid.add(titleLabel, 0, 0, 2, 1);
+        grid.add(new Label("Title:"), 0, 1);
+        grid.add(titleField, 1, 1);
+        grid.add(new Label("Abstract:"), 0, 2);
+        grid.add(abstractField, 1, 2);
+        grid.add(new Label("Body:"), 0, 3);
+        grid.add(bodyField, 1, 3);
+        grid.add(new Label("Keywords (comma-separated):"), 0, 4);
+        grid.add(keywordsField, 1, 4);
+        grid.add(new Label("Level:"), 0, 5);
+        grid.add(levelField, 1, 5);
+        grid.add(new Label("Groups (comma-separated):"), 0, 6);
+        grid.add(groupsField, 1, 6);
+        grid.add(submitButton, 0, 7);
+        grid.add(backButton, 1, 7);
+
+        // Event handlers for buttons
+        submitButton.setOnAction(e -> {
+        	
+            String title = titleField.getText().trim();
+            String abs = abstractField.getText().trim();
+            String body = bodyField.getText().trim();
+            String keywords = keywordsField.getText().trim();
+            String level = levelField.getText().trim();
+            String groups = groupsField.getText().trim();
+            addArticle(title, abs, body, keywords, level, groups);
+            
+        });
+
+        backButton.setOnAction(e -> showHomePage(role));
+
+
+        // Display the scene
+        Scene scene = new Scene(grid, 600, 600);
+        primaryStage.setScene(scene);
+    }
+    
     /**
-     * Represents a user in the system.
+     * Adds a new article to the help system.
+     *
+     * @param title The title of the article
+     * @param description The description of the article
+     * @param body The body of the article
+     * @param keywords A list of keywords
+     * @param level The difficulty level
+     * @param groups A set of groups to which the article belongs
      */
+    void addArticle(String title, String abs, String body, String keywords, String level, String groups) {
+    	
+
+    	
+    	Set<String> keywords_article = new HashSet<>(Arrays.asList(keywords.split(",")));
+    	Set<String> groups_article = new HashSet<>(Arrays.asList(groups.split(",")));
+    	
+    	
+    	Article article = new Article(nextArticleId++, level, title, abs, body, groups_article, keywords_article);
+    	articles.put(article.getId(), article);
+
+    	for (String group : groups_article) {
+            articleGroups.computeIfAbsent(group.trim(), k -> new HashSet<>()).add(article.getId());
+        }
+
+        showAlert("Article added successfully with ID: " + article.getId());
+        saveNextArticleId();
+    }
+
+/**
+ * View functionality - Displays a list of all articles with options to interact further (delete, update, etc.).
+ */
+
+/**
+ * Shows the page listing all articles in the system.
+ *
+ * @param role The role of the user who is currently logged in.
+ */
+
+    private void showListArticlesPage(Role role) {
+        VBox vbox = new VBox(10);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("List of Articles");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        vbox.getChildren().add(titleLabel);
+
+        // Create a header for the article list
+        HBox header = new HBox(10);
+        header.setAlignment(Pos.CENTER);
+        Label idHeader = new Label("ID");
+        Label titleHeader = new Label("Title");
+        Label descriptionHeader = new Label("Abstract");
+        Label levelHeader = new Label("Level");
+        Label groupsHeader = new Label("Groups");
+
+        idHeader.setMinWidth(50);
+        titleHeader.setMinWidth(150);
+        descriptionHeader.setMinWidth(200);
+        levelHeader.setMinWidth(100);
+        groupsHeader.setMinWidth(150);
+
+        idHeader.setStyle("-fx-font-weight: bold");
+        titleHeader.setStyle("-fx-font-weight: bold");
+        descriptionHeader.setStyle("-fx-font-weight: bold");
+        levelHeader.setStyle("-fx-font-weight: bold");
+        groupsHeader.setStyle("-fx-font-weight: bold");
+
+        header.getChildren().addAll(idHeader, titleHeader, descriptionHeader, levelHeader, groupsHeader);
+        vbox.getChildren().add(header);
+
+        // Add a separator
+        Separator separator = new Separator();
+        separator.setMaxWidth(650);
+        vbox.getChildren().add(separator);
+
+        // Create a ScrollPane to contain the article list
+        ScrollPane scrollPane = new ScrollPane();
+        VBox articleList = new VBox(5);
+        articleList.setAlignment(Pos.CENTER);
+
+        // Populate the article list
+        for (Article article : articles.values()) {
+            HBox articleRow = new HBox(10);
+            articleRow.setAlignment(Pos.CENTER);
+
+            Label idLabel = new Label(String.valueOf(article.getId()));
+            Label titleLabelRow = new Label(article.getTitle());
+            Label descriptionLabel = new Label(article.getAbstractText());
+            Label levelLabel = new Label(article.getLevel());
+            String groups = String.join(", ", article.getGroups());
+            Label groupsLabel = new Label(groups);
+
+            idLabel.setMinWidth(50);
+            titleLabelRow.setMinWidth(150);
+            descriptionLabel.setMinWidth(200);
+            levelLabel.setMinWidth(100);
+            groupsLabel.setMinWidth(150);
+
+            articleRow.getChildren().addAll(idLabel, titleLabelRow, descriptionLabel, levelLabel, groupsLabel);
+            articleList.getChildren().add(articleRow);
+        }
+
+        scrollPane.setContent(articleList);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(300);
+        vbox.getChildren().add(scrollPane);
+
+        // Add a Back button
+        Button backButton = new Button("Back");
+        backButton.setOnAction(e -> showHomePage(role));
+        vbox.getChildren().add(backButton);
+
+        Scene scene = new Scene(vbox, 600, 600);
+        primaryStage.setScene(scene);
+    }
+   
+/**
+ * Deletes an article from the system using its ID.
+ *
+ * @param id The ID of the article to delete
+ */
+
+    private void deleteArticle(long id) {
+        if (articles.remove(id) != null) {
+            for (Set<Long> groupArticles : articleGroups.values()) {
+                groupArticles.remove(id);
+            }
+            showAlert("Article deleted successfully");
+        } else {
+            showAlert("Article not found");
+        }
+    }
+
+/**
+ * Delete functionality - Provides GUI to delete an article and processes the deletion.
+ */
+
+/**
+ * Shows the page for deleting an article, setting up the necessary GUI components for user input.
+ *
+ * @param role The role of the user who is currently logged in.
+ */
+
+    private void showDeleteArticlePage(Role role) {
+        GridPane grid = createGrid();
+
+        Label titleLabel = new Label("Delete Article");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        TextField idField = new TextField();
+        Button deleteButton = new Button("Delete");
+        Button backButton = new Button("Back");
+
+        grid.add(titleLabel, 0, 0, 2, 1);
+        grid.add(new Label("Article ID:"), 0, 1);
+        grid.add(idField, 1, 1);
+        grid.add(deleteButton, 0, 2);
+        grid.add(backButton, 1, 2);
+
+        deleteButton.setOnAction(e -> {
+            try {
+                long id = Long.parseLong(idField.getText().trim());
+                deleteArticle(id);
+            } catch (NumberFormatException ex) {
+                showAlert("Invalid article ID.");
+            }
+        });
+
+        backButton.setOnAction(e -> showHomePage(role));
+
+        Scene scene = new Scene(grid, 600, 600);
+        primaryStage.setScene(scene);
+    }
+
+    
+ /**
+ * Backs up articles to a file. Can filter by groups if specified.
+ *
+ * @param fileName The name of the file to back up to
+ * @param groupName Optional group names, comma-separated, to filter the articles for backup
+ */
+    
+    private void backupArticles(String fileName, String groupName) {
+    	Set<String> groupsToBackup = new HashSet<>();
+        if (!groupName.isEmpty()) {
+            groupsToBackup.addAll(Arrays.asList(groupName.split(",")));
+        }
+        
+        List<Article> articlesToBackup = articles.values().stream()
+                .filter(article -> article.getGroups().stream().anyMatch(groupsToBackup::contains) || groupsToBackup.isEmpty())
+                .collect(Collectors.toList());
+        
+        try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
+            for (Article article : articlesToBackup) {
+                writer.println(article.getId() + "|" + article.getLevel() + "|" + article.getTitle() + "|" + article.getAbstractText() + "|" + article.getBody() + "|" +
+                               String.join(",", article.getGroups()) + "|" + String.join(",", article.getKeywords()));
+            }
+            showAlert("Backup completed successfully");
+        } catch (IOException e) {
+        	showAlert("Backup failed: " + e.getMessage());
+        }
+    }    	
+  
+/**
+ * Backup functionality - Provides GUI to backup articles and processes the backup to a file.
+ */
+
+/**
+ * Shows the page for backing up articles, setting up the necessary GUI components for user input.
+ *
+ * @param role The role of the user who is currently logged in.
+ */
+
+    private void showBackupPage(Role role) {
+        GridPane grid = createGrid();
+
+        Label titleLabel = new Label("Backup Articles");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        TextField fileNameField = new TextField();
+        TextField groupsField = new TextField();
+        Button backupButton = new Button("Backup");
+        Button backButton = new Button("Back");
+
+        grid.add(titleLabel, 0, 0, 2, 1);
+        grid.add(new Label("File Name:"), 0, 1);
+        grid.add(fileNameField, 1, 1);
+        grid.add(new Label("Groups (comma-separated):"), 0, 2);
+        grid.add(groupsField, 1, 2);
+        grid.add(backupButton, 0, 3);
+        grid.add(backButton, 1, 3);
+
+        backupButton.setOnAction(e -> {
+            String fileName = fileNameField.getText().trim();
+            String groupName = groupsField.getText().trim();
+            
+            backupArticles(fileName, groupName);
+        });
+
+        backButton.setOnAction(e -> showHomePage(role));
+
+        Scene scene = new Scene(grid, 600, 600);
+        primaryStage.setScene(scene);
+    }
+
+/**
+ * Restore functionality - Provides GUI to restore articles from a file and processes the restoration.
+ */
+
+/**
+ * Shows the page for restoring articles from a file, setting up the necessary GUI components for user input.
+ *
+ * @param role The role of the user who is currently logged in.
+ */
+    
+    private void showRestorePage(Role role) {
+        GridPane grid = createGrid();
+
+        Label titleLabel = new Label("Restore Articles");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        TextField fileNameField = new TextField();
+        CheckBox mergeCheckBox = new CheckBox("Merge with existing");
+        Button restoreButton = new Button("Restore");
+        Button backButton = new Button("Back");
+
+        grid.add(titleLabel, 0, 0, 2, 1);
+        grid.add(new Label("File Name:"), 0, 1);
+        grid.add(fileNameField, 1, 1);
+        grid.add(mergeCheckBox, 1, 2);
+        grid.add(restoreButton, 0, 3);
+        grid.add(backButton, 1, 3);
+
+        restoreButton.setOnAction(e -> {
+            String fileName = fileNameField.getText().trim();
+            boolean merge = mergeCheckBox.isSelected();
+            restoreArticles(fileName, merge);
+        });
+
+        backButton.setOnAction(e -> showHomePage(role));
+
+        Scene scene = new Scene(grid, 600, 600);
+        primaryStage.setScene(scene);
+    }
+
+/**
+ * Restores articles from a specified file, optionally merging them with existing articles.
+ *
+ * @param fileName The name of the file from which to restore articles
+ * @param merge Whether to merge restored articles with existing ones
+ */
+
+    private void restoreArticles(String fileName, boolean merge) {
+    	
+    	
+    	try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
+            if (!merge) {
+                articles.clear();
+                articleGroups.clear();
+            }
+    
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split("\\|");
+                long id = Long.parseLong(parts[0]);
+                String level = parts[1];
+                String title = parts[2];
+                String abstractText = parts[3];
+                String body = parts[4];
+                Set<String> groups = new HashSet<>(Arrays.asList(parts[5].split(",")));
+                Set<String> keywords = new HashSet<>(Arrays.asList(parts[6].split(",")));
+    
+                Article article = new Article(id, level, title, abstractText, body, groups, keywords);
+                articles.put(id, article);
+                for (String group : groups) {
+                    articleGroups.computeIfAbsent(group.trim(), k -> new HashSet<>()).add(id);
+                }
+    
+                // Update nextArticleId to prevent conflicts
+                nextArticleId = Math.max(nextArticleId, id + 1);
+            }
+            showAlert("Backup completed successfully");
+            System.out.println(articleGroups);
+            System.out.println(articles);
+        } catch (IOException e) {
+        	showAlert("Backup failed: " + e.getMessage());
+        }
+    	
+    }
+    
+/**
+ * Utility methods
+ */
+
+/**
+ * Saves the next available article ID to a file.
+ */
+    
+    private static void saveNextArticleId() {
+        try (DataOutputStream out = new DataOutputStream(new FileOutputStream("nextArticleId.dat"))) {
+            out.writeLong(nextArticleId);
+        } catch (IOException e) {
+            System.out.println("Failed to save article ID state: " + e.getMessage());
+        }
+    }
+
+/**
+ * Restores the next available article ID from a file.
+ */
+
+    private static void restoreNextArticleId() {
+        try (DataInputStream in = new DataInputStream(new FileInputStream("nextArticleId.dat"))) {
+            nextArticleId = in.readLong();
+        } catch (FileNotFoundException e) {
+            System.out.println("Starting new session with ID 1.");
+        } catch (IOException e) {
+            System.out.println("Error reading ID file: " + e.getMessage());
+            nextArticleId = 1; // Reset to 1 in case of error reading file
+        }
+    }
+
+/**
+ * Updates an article in the system with new details provided by the user.
+ *
+ * @param articleId The ID of the article to update.
+ * @param title The new title of the article, if provided.
+ * @param abs The new abstract of the article, if provided.
+ * @param body The new body content of the article, if provided.
+ * @param keywords Comma-separated list of new keywords, if provided.
+ * @param level The new level of difficulty of the article, if provided.
+ * @param groups Comma-separated list of new groups the article belongs to, if provided.
+ */
+    
+    public void updateArticle(long articleId, String title, String abs, String body, String keywords, String level, String groups) {
+    	
+    	Set<String> keywords_article = new HashSet<>(Arrays.asList(keywords.split(",")));
+    	Set<String> groups_article = new HashSet<>(Arrays.asList(groups.split(",")));
+    	
+        // Retrieve the article from the map by its ID
+        Article article = articles.get(articleId);
+
+        // If the article does not exist, print an error message and exit the method
+        if (article == null) {
+            System.out.println("Article with ID " + articleId + " not found.");
+            return;
+        }
+
+
+        // Update the fields of the article if new values are provided
+        if (level != null) {
+            article.setLevel(level);
+        }
+        if (title != null) {
+            article.setTitle(title);
+        }
+        if (abs != null) {
+            article.setAbstractText(abs);
+        }
+        if (body != null) {
+            article.setBody(body);
+        }
+        if (groups != null) {
+            article.setGroups(groups_article);
+        }
+        if (keywords != null) {
+            article.setKeywords(keywords_article);
+        }
+
+
+        // Update the article in the map and display a success message
+        articles.put(articleId, article);
+        showAlert("Article with ID " + articleId + " updated successfully.");
+    }
+
+
+/**
+ * Displays the page for updating an article, setting up the necessary GUI components for user input.
+ *
+ * @param role The role of the user who is currently logged in.
+ */
+    
+    private void showUpdateArticlePage(Role role) {
+        GridPane grid = createGrid();
+
+        Label titleLabel = new Label("Update Article");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        TextField idField = new TextField();
+        TextField titleField = new TextField();
+        TextField descriptionField = new TextField();
+        TextArea bodyField = new TextArea();
+        TextField keywordsField = new TextField();
+        TextField levelField = new TextField();
+        TextField groupsField = new TextField();
+        Button updateButton = new Button("Update");
+        Button backButton = new Button("Back");
+
+
+        // Layout the form for updating an article
+        grid.add(titleLabel, 0, 0, 2, 1);
+        grid.add(new Label("Article ID:"), 0, 1);
+        grid.add(idField, 1, 1);
+        grid.add(new Label("Title:"), 0, 2);
+        grid.add(titleField, 1, 2);
+        grid.add(new Label("Description:"), 0, 3);
+        grid.add(descriptionField, 1, 3);
+        grid.add(new Label("Body:"), 0, 4);
+        grid.add(bodyField, 1, 4);
+        grid.add(new Label("Keywords (comma-separated):"), 0, 5);
+        grid.add(keywordsField, 1, 5);
+        grid.add(new Label("Level:"), 0, 6);
+        grid.add(levelField, 1, 6);
+        grid.add(new Label("Groups (comma-separated):"), 0, 7);
+        grid.add(groupsField, 1, 7);
+        grid.add(updateButton, 0, 8);
+        grid.add(backButton, 1, 8);
+
+        // Define actions for the update button
+        updateButton.setOnAction(e -> {
+            try {
+                long id = Long.parseLong(idField.getText().trim());
+                String title = titleField.getText().trim();
+                String description = descriptionField.getText().trim();
+                String body = bodyField.getText().trim();
+                String keywords = keywordsField.getText().trim();
+                String level = levelField.getText().trim();
+                String groups = groupsField.getText().trim();
+                updateArticle(id, title, description, body, keywords, level, groups);
+            } catch (NumberFormatException ex) {
+                showAlert("Invalid article ID.");
+            }
+        });
+
+        // Define action for the back button
+        backButton.setOnAction(e -> showHomePage(role));
+
+        // Display the scene containing the update form
+        Scene scene = new Scene(grid, 1000, 1000);
+        primaryStage.setScene(scene);
+    }
+    
+/**
+ * Classes and Enums
+ */
+
+/**
+ * Represents a user in the system.
+ */
     
     private class User {
         private String username;
@@ -794,6 +1407,7 @@ public class HelpSystemApp extends Application {
             this.passwordResetRequired = false;
         }
 
+        // Getter and setter methods
         public String getUsername() {
             return username;
         }
@@ -895,13 +1509,100 @@ public class HelpSystemApp extends Application {
         }
     }
     
-    /**
-     * Enum representing the possible roles in the system.
-     */
+/**
+* Enum representing the possible roles in the system.
+*/
 
     private enum Role {
         ADMIN, STUDENT, INSTRUCTOR
     }
     
+/**
+ * Represents an article in the system.
+ */
+    public class Article implements Serializable {
+    	
+    	private static final long serialVersionUID = 1L;
+		private long id;
+    	private String level;
+    	private String title;
+	    private String abstractText;
+	    private String body;
+	    private Set<String> groups;
+	    private Set<String> keywords;
+
+        public Article(long id, String level, String title, String abstractText, String body, Set<String> groups, Set<String> keywords) {
+        	this.id = id;
+            this.level = level;
+            this.title = title;
+            this.abstractText = abstractText;
+            this.body = body;
+            this.groups = groups;
+            this.keywords = keywords;
+        }
+
+     // Getter methods
+        public long getId() {
+            return id;
+        }
+
+        public String getLevel() {
+            return level;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public String getAbstractText() {
+            return abstractText;
+        }
+
+        public String getBody() {
+            return body;
+        }
+
+        public Set<String> getGroups() {
+            return groups;
+        }
+
+        public Set<String> getKeywords() {
+            return keywords;
+        }
+
+        // Setter methods
+        public void setId(long id) {
+            this.id = id;
+        }
+
+        public void setLevel(String level) {
+            this.level = level;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public void setAbstractText(String abstractText) {
+            this.abstractText = abstractText;
+        }
+
+        public void setBody(String body) {
+            this.body = body;
+        }
+
+        public void setGroups(Set<String> groups) {
+            this.groups = groups;
+        }
+
+        public void setKeywords(Set<String> keywords) {
+            this.keywords = keywords;
+        }
+
+        @Override
+        public String toString() {
+            return "Article ID: " + id + "\nLevel: " + level + "\nTitle: " + title + "\nAbstract: " + abstractText + "\nBody: " + body;
+        }
+    }
     
 }
