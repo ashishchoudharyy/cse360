@@ -13,7 +13,7 @@
 
 package com.cse360.helpsystem;
 
-public class PasswordValidationTest {
+public class ValidationTest {
 
     private static int numPassed = 0;
     private static int numFailed = 0;
