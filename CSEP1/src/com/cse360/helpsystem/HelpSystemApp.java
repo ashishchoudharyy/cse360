@@ -1,5 +1,6 @@
 package com.cse360.helpsystem;
 
+// Phase 3 incorported
 //JavaFX imports needed to support the Graphical User Interface
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
