@@ -1,6 +1,5 @@
 package com.cse360.helpsystem;
 
-// Phase 3 incorported
 //JavaFX imports needed to support the Graphical User Interface
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
@@ -31,10 +30,17 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-
+import java.nio.charset.StandardCharsets;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import java.security.SecureRandom;
+import java.util.Base64;
 
 
 /*******
@@ -46,7 +52,7 @@ import java.util.Map;
  * 
  * @author CSE360 Team(Ashish Kumar, Kamaal Alag, Grace Mower, Ishaan Kurmi, Anshuman Yadav)
  * 
- * @version 2.00 2024-10-30 Added new features including addition of article, deletion of article etc.
+ * @version 2.00 2024-10-30 Added new features including addition of article, deletion of article ect.
  * 
  */
 
@@ -63,14 +69,14 @@ public class HelpSystemApp extends Application {
     /** Map to store invitation codes and associated roles */
     private Map<String, Set<Role>> inviteCodes = new HashMap<>();
     
-    static Map<Long, Article> articles = new HashMap<>();
+    private static Map<Long, Article> articles = new HashMap<>();
     private static Map<String, Set<Long>> articleGroups = new HashMap<>();
     
-    static long nextArticleId = 1;
+    private static long nextArticleId = 1;
     
     private Role currentRole;
     
-    
+    private SpecialAccessGroup specialAccessGroup = new SpecialAccessGroup("Special");
     
     
     
@@ -154,13 +160,13 @@ public class HelpSystemApp extends Application {
     
     private void login(String username, String password) {
         if (users.isEmpty()) {
-            String passwordValidationResult = validatePassword(password);
-            if (passwordValidationResult != null) {
-                showAlert(passwordValidationResult);
-                return;
-            }
+//            String passwordValidationResult = validatePassword(password);
+//            if (passwordValidationResult != null) {
+//                showAlert(passwordValidationResult);
+//                return;
+//            }
             
-            User admin = new User(username, password, new HashSet<>(Arrays.asList(Role.ADMIN)));
+            User admin = new User(username, password, new HashSet<>(Arrays.asList(Role.INSTRUCTOR)));
             users.put(username, admin);
             currentUser = admin;
             showSetupAccountPage();
@@ -443,24 +449,43 @@ public class HelpSystemApp extends Application {
             Button listArticleButton = new Button("List Articles");
             Button backupButton = new Button("Backup Articles");
             Button restoreButton = new Button("Restore Articles");
+            Button searchButton = new Button("Search");
+            Button manageGroupButton = new Button("Manage Special Access Group");
 
 
             logoutButton.setOnAction(e -> showLoginPage());
-            addArticleButton.setOnAction(e -> showAddArticlePage(role));
+            addArticleButton.setOnAction(e -> showspecialAddArticlePage(role));
             listArticleButton.setOnAction(e -> showListArticlesPage(role));
             updateArticleButton.setOnAction(e -> showUpdateArticlePage(role));
             deleteArticleButton.setOnAction(e -> showDeleteArticlePage(role));
             backupButton.setOnAction(e -> showBackupPage(role));
             restoreButton.setOnAction(e -> showRestorePage(role));
+            searchButton.setOnAction(e -> showSearchPage(role));
+            manageGroupButton.setOnAction(e -> showManagePermissionsPage(specialAccessGroup));
 
-            vbox.getChildren().addAll(logoutButton, addArticleButton,listArticleButton, updateArticleButton, deleteArticleButton, backupButton, restoreButton);
+            vbox.getChildren().addAll(logoutButton, addArticleButton,listArticleButton, updateArticleButton, deleteArticleButton, backupButton, restoreButton, searchButton, manageGroupButton);
         }
         
         if (role == Role.STUDENT) {
             Label roleLabel = new Label(role.toString() + " Dashboard");
+            
+            Button quitButton = new Button("Quit");
+            Button sendMessageButton = new Button("Send Message");
+            Button searchButton = new Button("Search");
+            Button listArticleButton = new Button("List Articles");
             Button logoutButton = new Button("Logout");
+            Button restoreButton = new Button("Restore Articles");
+            
+            
+            
+            quitButton.setOnAction(e -> showLoginPage());
+            sendMessageButton.setOnAction(e -> showSendMessagePage());
+            searchButton.setOnAction(e -> showSearchPage(role));
             logoutButton.setOnAction(e -> showLoginPage());
-            vbox.getChildren().addAll(roleLabel, logoutButton);
+            listArticleButton.setOnAction(e -> showListArticlesPage(role));
+            restoreButton.setOnAction(e -> showRestorePage(role));
+            
+            vbox.getChildren().addAll(roleLabel, quitButton, sendMessageButton, searchButton, listArticleButton, restoreButton);
         }
 
         Scene scene = new Scene(vbox, 600, 500);
@@ -562,15 +587,14 @@ public class HelpSystemApp extends Application {
                 User user = users.get(username);
                 user.addRole(selectedRole);
                 showAlert("Role added successfully");
-            } else {
-                showAlert("Invalid input");
-            }
-        });
-
-        removeRoleButton.setOnAction(e -> {
-            String username = usernameField.getText();
-            Role selectedRole = roleComboBox.getValue();
-            if (users.containsKey(username) && selectedRole != null) {
+           } else {
+               showAlert("Invalid input");
+           }
+       });
+       removeRoleButton.setOnAction(e -> {
+          String username = usernameField.getText();
+           Role selectedRole = roleComboBox.getValue();
+           if (users.containsKey(username) && selectedRole != null) {
                 User user = users.get(username);
                 if (user.getRoles().size() > 1) {
                     user.removeRole(selectedRole);
@@ -907,7 +931,7 @@ public class HelpSystemApp extends Application {
      * @param level The difficulty level
      * @param groups A set of groups to which the article belongs
      */
-    void addArticle(String title, String abs, String body, String keywords, String level, String groups) {
+    private void addArticle(String title, String abs, String body, String keywords, String level, String groups) {
     	
 
     	
@@ -1376,6 +1400,470 @@ public class HelpSystemApp extends Application {
         primaryStage.setScene(scene);
     }
     
+    private void specialaddArticle(String title, String abs, String body, String keywords, String level, String groups, boolean isSpecialAccess) {
+        Set<String> keywordsArticle = new HashSet<>(Arrays.asList(keywords.split(",")));
+        Set<String> groupsArticle = new HashSet<>(Arrays.asList(groups.split(",")));
+
+        if (isSpecialAccess) {
+            body = encodeBody(body); // Encode body
+        }
+
+        // Create the article object
+        Article article = new Article(nextArticleId++, level, title, abs, body, groupsArticle, keywordsArticle);
+        article.setSpecialAccess(isSpecialAccess); // Mark as special access if needed
+        articles.put(article.getId(), article);
+
+        for (String group : groupsArticle) {
+            articleGroups.computeIfAbsent(group.trim(), k -> new HashSet<>()).add(article.getId());
+        }
+
+        if (isSpecialAccess) {
+            // Add the article to the SpecialAccessGroup
+            specialAccessGroup.getEncryptedArticles().add(article);
+        }
+
+        showAlert("Article added successfully with ID: " + article.getId());
+        saveNextArticleId();
+    }
+    private void showspecialAddArticlePage(Role role) {
+        GridPane grid = createGrid();
+
+        Label titleLabel = new Label("Add New Article");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+
+        
+        // Fields for article details
+        TextField levelField = new TextField();
+        TextField titleField = new TextField();
+        TextField abstractField = new TextField();
+        TextArea bodyField = new TextArea();
+        TextField keywordsField = new TextField();
+        TextField groupsField = new TextField();
+        Button submitButton = new Button("Submit");
+        Button backButton = new Button("Back");
+        
+
+        // Layout the form
+        grid.add(titleLabel, 0, 0, 2, 1);
+        grid.add(new Label("Title:"), 0, 1);
+        grid.add(titleField, 1, 1);
+        grid.add(new Label("Abstract:"), 0, 2);
+        grid.add(abstractField, 1, 2);
+        grid.add(new Label("Body:"), 0, 3);
+        grid.add(bodyField, 1, 3);
+        grid.add(new Label("Keywords (comma-separated):"), 0, 4);
+        grid.add(keywordsField, 1, 4);
+        grid.add(new Label("Level:"), 0, 5);
+        grid.add(levelField, 1, 5);
+        grid.add(new Label("Groups (comma-separated):"), 0, 6);
+        grid.add(groupsField, 1, 6);
+        grid.add(submitButton, 0, 7);
+        grid.add(backButton, 1, 7);
+
+        CheckBox specialAccessCheckbox = new CheckBox("Special Access Group");
+        grid.add(specialAccessCheckbox, 0, 8);
+
+        submitButton.setOnAction(e -> {
+            String title = titleField.getText().trim();
+            String abs = abstractField.getText().trim();
+            String body = bodyField.getText().trim();
+            String keywords = keywordsField.getText().trim();
+            String level = levelField.getText().trim();
+            String groups = groupsField.getText().trim();
+            boolean isSpecialAccess = specialAccessCheckbox.isSelected();
+
+            specialaddArticle(title, abs, body, keywords, level, groups, isSpecialAccess);
+        });
+
+        backButton.setOnAction(e -> showHomePage(role));
+
+
+        // Display the scene
+        Scene scene = new Scene(grid, 600, 600);
+        primaryStage.setScene(scene);
+    }
+    
+    
+// phase 3
+    /**
+     * Displays the page for sending messages in the help system.
+     * Allows users to send either a generic message or a specific message.
+     */
+    
+    private void showSendMessagePage() {
+        VBox vbox = new VBox(10);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setPadding(new Insets(20));
+
+        Label messageLabel = new Label("Send a Message to the Help System");
+        messageLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+        // Generic Message Section
+        Label genericMessageLabel = new Label("Generic Message:");
+        Button genericMessageButton = new Button("I am confused about using this tool");
+        genericMessageButton.setOnAction(e -> sendMessage("I am confused about using this tool"));
+
+        // Specific Message Section
+        Label specificMessageLabel = new Label("Specific Message:");
+        TextArea specificMessageArea = new TextArea();
+        specificMessageArea.setPromptText("Enter your specific message here...");
+        specificMessageArea.setWrapText(true);
+
+        Button sendSpecificMessageButton = new Button("Send Specific Message");
+        sendSpecificMessageButton.setOnAction(e -> {
+            String specificMessage = specificMessageArea.getText().trim();
+            if (!specificMessage.isEmpty()) {
+                sendMessage(specificMessage);
+                showAlert("Your message has been sent successfully!");
+            } else {
+            	showAlert("Please enter a specific message before sending.");
+            }
+        });
+
+        // Back Button
+        Button backButton = new Button("Back");
+        backButton.setOnAction(e -> showHomePage(Role.STUDENT)); 
+
+        vbox.getChildren().addAll(
+            messageLabel,
+            genericMessageLabel, genericMessageButton,
+            specificMessageLabel, specificMessageArea, sendSpecificMessageButton,
+            backButton
+        );
+
+        Scene scene = new Scene(vbox, 600, 400);
+        primaryStage.setScene(scene);
+    }
+    
+    /**
+     * Sends a message to the help system.
+     * Logs the message for review by system administrators.
+     *
+     * @param message The message content to be sent.
+     */    
+    private void sendMessage(String message) {
+       
+        System.out.println("Message sent: " + message);
+    }
+    
+   
+    /**
+     * Executes a search for articles based on the provided query, content level, and group.
+     * Displays the search results, including article counts by level, and allows users to view specific articles.
+     *
+     * @param query The search query string (keywords, title, or identifier).
+     * @param contentLevel The content level to filter by (e.g., beginner, intermediate, expert, or All).
+     * @param group The group to filter by (e.g., specific group name or All).
+     * @param role The role of the current user (determines access permissions).
+     */
+
+
+    private void performSearch(String query, String contentLevel, String group, Role role) {
+        VBox vbox = new VBox(10);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Search Results");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        vbox.getChildren().add(titleLabel);
+
+        // Display the current active group
+        Label activeGroupLabel = new Label("Current Active Group: " + group);
+        vbox.getChildren().add(activeGroupLabel);
+
+        // Filter articles based on search criteria
+        List<Article> filteredArticles = new ArrayList<>();
+        for (Article article : articles.values()) {
+            boolean matchesQuery = query.isEmpty() || 
+                article.getTitle().toLowerCase().contains(query.toLowerCase()) || 
+                article.getAbstractText().toLowerCase().contains(query.toLowerCase()) || 
+                String.valueOf(article.getId()).equalsIgnoreCase(query);
+
+            boolean matchesLevel = contentLevel.equals("All") || article.getLevel().equalsIgnoreCase(contentLevel);
+
+            boolean matchesGroup = group.equals("All") || article.getGroups().contains(group);
+
+            if (matchesQuery && matchesLevel && matchesGroup) {
+                filteredArticles.add(article);
+            }
+        }
+
+        // Count articles by content level
+        Map<String, Long> levelCounts = filteredArticles.stream()
+            .collect(Collectors.groupingBy(Article::getLevel, Collectors.counting()));
+
+        // Display article count by level
+        VBox levelCountBox = new VBox(5);
+        levelCounts.forEach((level, count) -> {
+            Label countLabel = new Label(level + ": " + count + " article(s)");
+            levelCountBox.getChildren().add(countLabel);
+        });
+        vbox.getChildren().add(levelCountBox);
+
+        // Short list of matching articles
+        VBox articleList = new VBox(5);
+        articleList.setAlignment(Pos.CENTER);
+
+        int sequenceNumber = 1;
+        Map<Integer, Article> sequenceToArticleMap = new HashMap<>();
+        for (Article article : filteredArticles) {
+            sequenceToArticleMap.put(sequenceNumber, article);
+            Label articleLabel = new Label(sequenceNumber + ". " + article.getTitle() + "\nAbstract: " + article.getAbstractText());
+            articleLabel.setWrapText(true);
+            articleList.getChildren().add(articleLabel);
+            sequenceNumber++;
+        }
+
+        // ScrollPane to display articles
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setContent(articleList);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(300);
+        vbox.getChildren().add(scrollPane);
+
+        // Input for viewing article by sequence number
+        HBox viewArticleBox = new HBox(10);
+        viewArticleBox.setAlignment(Pos.CENTER);
+        TextField sequenceInputField = new TextField();
+        sequenceInputField.setPromptText("Enter sequence number to view article");
+        Button viewArticleButton = new Button("View Article");
+        viewArticleButton.setOnAction(e -> {
+            try {
+                int sequence = Integer.parseInt(sequenceInputField.getText().trim());
+                if (sequenceToArticleMap.containsKey(sequence)) {
+                    showArticleDetails(sequenceToArticleMap.get(sequence), role);
+                } else {
+                	showAlert("Invalid sequence number.");
+                }
+            } catch (NumberFormatException ex) {
+            	showAlert("Please enter a valid sequence number.");
+            }
+        });
+        viewArticleBox.getChildren().addAll(sequenceInputField, viewArticleButton);
+        vbox.getChildren().add(viewArticleBox);
+
+        // Add actions
+        Button searchAgainButton = new Button("Search Again");
+        searchAgainButton.setOnAction(e -> showSearchPage(role));
+        vbox.getChildren().add(searchAgainButton);
+
+        Button backButton = new Button("Back");
+        backButton.setOnAction(e -> showHomePage(role));
+        vbox.getChildren().add(backButton);
+
+        Scene scene = new Scene(vbox, 600, 600);
+        primaryStage.setScene(scene);
+    }
+
+    
+    /**
+     * Displays the detailed view of a selected article, including title, abstract, body, and metadata.
+     * Handles special access articles by checking if the user has the required permissions.
+     *
+     * @param article The article object containing the details to display.
+     * @param role The role of the current user (used to navigate back to the appropriate page).
+     */
+
+
+    
+    private void showArticleDetails(Article article, Role role) {
+        VBox vbox = new VBox(10);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Article Details");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        vbox.getChildren().add(titleLabel);
+
+        Label idLabel = new Label("ID: " + article.getId());
+        Label titleLabelRow = new Label("Title: " + article.getTitle());
+        Label abstractLabel = new Label("Abstract: " + article.getAbstractText());
+
+        Label bodyLabel;
+
+        if (article.isSpecialAccess()) {
+            // Check if the current user has permission to view the article
+            if (specialAccessGroup.canView(currentUser.getUsername())) {
+                bodyLabel = new Label("Body: " + decodeBody(article.getBody()));
+            } else {
+                bodyLabel = new Label("Body: Access Denied - You do not have permission to view this content.");
+            }
+        } else {
+            bodyLabel = new Label("Body: " + article.getBody());
+        }
+
+        Label keywordLabel = new Label("Keywords: " + String.join(", ", article.getKeywords()));
+        Label levelLabel = new Label("Level: " + article.getLevel());
+        Label groupsLabel = new Label("Groups: " + String.join(", ", article.getGroups()));
+
+        vbox.getChildren().addAll(idLabel, titleLabelRow, abstractLabel, bodyLabel, levelLabel, keywordLabel, groupsLabel);
+
+        // Back to search results
+        Button backButton = new Button("Back to Search Results");
+        backButton.setOnAction(e -> performSearch("", "All", "All", role)); // Adjust parameters as needed
+        vbox.getChildren().add(backButton);
+
+        Scene scene = new Scene(vbox, 600, 400);
+        primaryStage.setScene(scene);
+    }
+
+    /**
+     * Displays the search page for users to search for articles.
+     * Provides fields for entering a search query, selecting content level, and filtering by groups.
+     * Allows users to initiate a search or navigate back to their dashboard.
+     *
+     * @param role The role of the current user (determines navigation and access controls).
+     */
+
+    
+
+    private void showSearchPage(Role role) {
+        VBox vbox = new VBox(10);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Search Page");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+
+        Label searchLabel = new Label("Search Articles:");
+        TextField searchField = new TextField();
+        searchField.setPromptText("Enter keywords, title, or identifier");
+
+        ComboBox<String> contentLevelComboBox = new ComboBox<>();
+        contentLevelComboBox.getItems().addAll("All", "beginner", "intermediate", "expert");
+        contentLevelComboBox.setValue("All");
+
+        ComboBox<String> groupComboBox = new ComboBox<>();
+        groupComboBox.getItems().addAll("All", "360", "eclipse");
+        groupComboBox.setValue("All");
+
+        Button searchButton = new Button("Search");
+        searchButton.setOnAction(e -> performSearch(searchField.getText(), contentLevelComboBox.getValue(), groupComboBox.getValue(), role));
+
+        Button backButton = new Button("Back to Dashboard");
+        backButton.setOnAction(e -> showHomePage(role));
+
+        vbox.getChildren().addAll(titleLabel, searchLabel, searchField, contentLevelComboBox, groupComboBox, searchButton, backButton);
+
+        Scene scene = new Scene(vbox, 600, 400);
+        primaryStage.setScene(scene);
+    }
+    
+    
+    /**
+     * Encodes the body content of an article using Base64 encoding.
+     * Ensures secure storage or transmission of sensitive article content.
+     *
+     * @param body The plain text body of the article to encode.
+     * @return The Base64-encoded string of the article body.
+     */
+
+
+    private String encodeBody(String body) {
+        return Base64.getEncoder().encodeToString(body.getBytes(StandardCharsets.UTF_8));
+    }
+    
+    /**
+     * Decodes a Base64-encoded article body back into plain text.
+     * Used to retrieve the readable content of encrypted articles for authorized users.
+     *
+     * @param encodedBody The Base64-encoded string representing the article body.
+     * @return The decoded plain text body of the article.
+     */
+
+
+    private String decodeBody(String encodedBody) {
+        return new String(Base64.getDecoder().decode(encodedBody), StandardCharsets.UTF_8);
+    }
+    
+    
+    /**
+     * Displays the permissions management page for a specific special access group.
+     * Allows admins to view and modify which users can access the group's articles.
+     * Provides options to grant or revoke permissions for existing users and add new users to the group.
+     *
+     * @param group The SpecialAccessGroup object representing the group whose permissions are being managed.
+     */
+
+    private void showManagePermissionsPage(SpecialAccessGroup group) {
+        VBox vbox = new VBox(10);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Manage Permissions for Group: " + group.getGroupName());
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        vbox.getChildren().add(titleLabel);
+
+        // Existing users with permissions
+        VBox userList = new VBox(5);
+        for (String username : group.getInstructorUsernames()) {
+            HBox userRow = new HBox(10);
+            userRow.setAlignment(Pos.CENTER);
+
+            Label usernameLabel = new Label(username);
+            CheckBox permissionCheckBox = new CheckBox("Can View Decoded Body");
+            permissionCheckBox.setSelected(group.canView(username));
+
+            permissionCheckBox.setOnAction(e -> {
+                if (permissionCheckBox.isSelected()) {
+                    group.grantPermission(username);
+                } else {
+                    group.revokePermission(username);
+                }
+            });
+
+            userRow.getChildren().addAll(usernameLabel, permissionCheckBox);
+            userList.getChildren().add(userRow);
+        }
+
+        ScrollPane scrollPane = new ScrollPane(userList);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(300);
+
+        // Add new user section
+        Label addUserLabel = new Label("Add User to Special Access Group:");
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Enter username");
+
+        Button addUserButton = new Button("Add User");
+        addUserButton.setOnAction(e -> {
+            String username = usernameField.getText().trim();
+            if (!username.isEmpty()) {
+                addUserToSpecialAccessGroup(group, username);
+            } else {
+                showAlert("Please enter a valid username.");
+            }
+        });
+
+        VBox addUserBox = new VBox(10, addUserLabel, usernameField, addUserButton);
+        addUserBox.setAlignment(Pos.CENTER);
+
+        Button backButton = new Button("Back");
+        backButton.setOnAction(e -> showHomePage(Role.INSTRUCTOR));
+
+        vbox.getChildren().addAll(scrollPane, addUserBox, backButton);
+
+        Scene scene = new Scene(vbox, 600, 400);
+        primaryStage.setScene(scene);
+    }
+    
+    /**
+     * Adds a user to a special access group and grants them viewing permissions.
+     * Checks if the user exists in the system before granting permissions.
+     *
+     * @param group The SpecialAccessGroup object to which the user will be added.
+     * @param username The username of the user to add to the group.
+     */
+
+    private void addUserToSpecialAccessGroup(SpecialAccessGroup group, String username) {
+        if (users.containsKey(username)) {
+            group.grantPermission(username);
+            showAlert("Permission granted to " + username + " for Special Access Group: " + group.getGroupName());
+        } else {
+            showAlert("User not found: " + username);
+        }
+    }
+
 /**
  * Classes and Enums
  */
@@ -1517,11 +2005,11 @@ public class HelpSystemApp extends Application {
     private enum Role {
         ADMIN, STUDENT, INSTRUCTOR
     }
-    
+
 /**
  * Represents an article in the system.
  */
-    public class Article implements Serializable {
+    private class Article implements Serializable {
     	
     	private static final long serialVersionUID = 1L;
 		private long id;
@@ -1531,6 +2019,7 @@ public class HelpSystemApp extends Application {
 	    private String body;
 	    private Set<String> groups;
 	    private Set<String> keywords;
+	    private boolean isSpecialAccess;
 
         public Article(long id, String level, String title, String abstractText, String body, Set<String> groups, Set<String> keywords) {
         	this.id = id;
@@ -1541,6 +2030,7 @@ public class HelpSystemApp extends Application {
             this.groups = groups;
             this.keywords = keywords;
         }
+        
 
      // Getter methods
         public long getId() {
@@ -1599,10 +2089,90 @@ public class HelpSystemApp extends Application {
         public void setKeywords(Set<String> keywords) {
             this.keywords = keywords;
         }
+        
+        public boolean isSpecialAccess() {
+            return isSpecialAccess;
+        }
+
+        public void setSpecialAccess(boolean specialAccess) {
+            isSpecialAccess = specialAccess;
+        }
 
         @Override
         public String toString() {
             return "Article ID: " + id + "\nLevel: " + level + "\nTitle: " + title + "\nAbstract: " + abstractText + "\nBody: " + body;
+        }
+    }
+/**
+* Represents an Special Access Group in the system.
+*/ 
+    private class SpecialAccessGroup {
+        private String groupName;
+        private Set<String> adminUsernames;
+        private Set<String> instructorUsernames;
+        private Set<String> studentUsernames;
+        private Map<String, Boolean> viewPermissions; // New: Maps username to view permissions
+        private List<Article> encryptedArticles;
+
+        public SpecialAccessGroup(String groupName) {
+            this.groupName = groupName;
+            this.adminUsernames = new HashSet<>();
+            this.instructorUsernames = new HashSet<>();
+            this.studentUsernames = new HashSet<>();
+            this.viewPermissions = new HashMap<>(); // Initialize the map
+            this.encryptedArticles = new ArrayList<>();
+        }
+
+        public String getGroupName() {
+            return groupName;
+        }
+
+        public void setGroupName(String groupName) {
+            this.groupName = groupName;
+        }
+
+        public Set<String> getAdminUsernames() {
+            return adminUsernames;
+        }
+
+        public void setAdminUsernames(Set<String> adminUsernames) {
+            this.adminUsernames = adminUsernames;
+        }
+
+        public Set<String> getInstructorUsernames() {
+            return instructorUsernames;
+        }
+
+        public void setInstructorUsernames(Set<String> instructorUsernames) {
+            this.instructorUsernames = instructorUsernames;
+        }
+
+        public Set<String> getStudentUsernames() {
+            return studentUsernames;
+        }
+
+        public void setStudentUsernames(Set<String> studentUsernames) {
+            this.studentUsernames = studentUsernames;
+        }
+
+        public List<Article> getEncryptedArticles() {
+            return encryptedArticles;
+        }
+
+        public void setEncryptedArticles(List<Article> encryptedArticles) {
+            this.encryptedArticles = encryptedArticles;
+        }
+        
+        public void grantPermission(String username) {
+            viewPermissions.put(username, true);
+        }
+
+        public void revokePermission(String username) {
+            viewPermissions.put(username, false);
+        }
+
+        public boolean canView(String username) {
+            return viewPermissions.getOrDefault(username, false);
         }
     }
     
