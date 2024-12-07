@@ -1,6 +1,6 @@
 package com.cse360.helpsystem;
 
-//JavaFX imports needed to support the Graphical User Interface
+// Below are the JavaFX imports needed to support the Graphical User Interface
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.HBox;
